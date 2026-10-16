@@ -33,7 +33,7 @@ curl http://localhost:8080/version
 
 ## Testare
 
-```
+```Aplicatia ruleaza ca microserviciu containerizat si expune endpoint-uri REST pentru interactiunea cu clientii.
 cmake -B build -DBUILD_TESTS=ON
 cmake --build build -j
 ./build/tests

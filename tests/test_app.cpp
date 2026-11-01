@@ -62,3 +62,56 @@ TEST_CASE("reset returns to one") {
 TEST_CASE("home page mentions the application name") {
     CHECK(HomePage().find(kAppName) != std::string::npos);
 }
+
+TEST_CASE("validate name length between 1 and 50 characters") {
+    CHECK_FALSE(IsValidName(""));
+    CHECK(IsValidName("A"));
+    CHECK(IsValidName(std::string(50, 'x')));
+    CHECK_FALSE(IsValidName(std::string(51, 'x')));
+}
+
+TEST_CASE("validate email format with one @ and dot after") {
+    CHECK(IsValidEmail("ana@example.com"));
+    CHECK(IsValidEmail("a@b.c"));
+    CHECK_FALSE(IsValidEmail("fara-at.com"));
+    CHECK_FALSE(IsValidEmail("@start.com"));
+    CHECK_FALSE(IsValidEmail("ana@farapunct"));
+    CHECK_FALSE(IsValidEmail("ana@@example.com"));
+}
+
+TEST_CASE("validate phone requires 10 digits optional leading plus") {
+    CHECK(IsValidPhone("0722334455"));
+    CHECK(IsValidPhone("+0722334455"));
+    CHECK_FALSE(IsValidPhone("072233445"));     // 9 digits
+    CHECK_FALSE(IsValidPhone("07223344556"));    // 11 digits without +
+    CHECK_FALSE(IsValidPhone("+072233445"));    // + and 9 digits
+    CHECK_FALSE(IsValidPhone("072233445a"));    // non-digit
+}
+
+TEST_CASE("validate category against allowed set") {
+    CHECK(IsValidCategory("family"));
+    CHECK(IsValidCategory("friends"));
+    CHECK(IsValidCategory("work"));
+    CHECK(IsValidCategory("other"));
+    CHECK_FALSE(IsValidCategory("colleagues"));
+    CHECK_FALSE(IsValidCategory(""));
+}
+
+TEST_CASE("store adds contact and detects case-insensitive email conflicts") {
+    Store store;
+    const auto contact = store.AddContact("Ana Pop", "ana@example.com", "0722334455", "work");
+
+    CHECK(contact.id == 1);
+    CHECK(contact.name == "Ana Pop");
+    CHECK(contact.email == "ana@example.com");
+
+    // Email conflict with different casing must be detected
+    CHECK(store.HasEmail("Ana@Example.COM"));
+    CHECK(store.HasEmail("ana@example.com"));
+    CHECK_FALSE(store.HasEmail("dan@example.com"));
+
+    // Reset clears contacts and email registry
+    store.Reset();
+    CHECK_FALSE(store.HasEmail("ana@example.com"));
+    CHECK(store.GetAllContacts().empty());
+}

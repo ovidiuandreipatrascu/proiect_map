@@ -2,10 +2,16 @@
 // Pure logic lives here so it can be unit tested without starting a server.
 #pragma once
 
+#include <algorithm>
+#include <cctype>
 #include <chrono>
 #include <cstdlib>
+#include <map>
 #include <mutex>
+#include <optional>
 #include <string>
+#include <string_view>
+#include <vector>
 
 #include <nlohmann/json.hpp>
 
@@ -13,6 +19,7 @@ namespace map_project {
 
 inline constexpr const char* kAppName = "map-project";
 inline constexpr const char* kAppVersion = "0.1.0";
+inline constexpr int kMaxNameLength = 50;
 
 /// Reads an environment variable, falling back when it is missing or empty.
 inline std::string Env(const char* key, const std::string& fallback) {
@@ -20,13 +27,87 @@ inline std::string Env(const char* key, const std::string& fallback) {
     return (value == nullptr || *value == '\0') ? fallback : std::string(value);
 }
 
+/// Helper function to convert a string to lowercase for case-insensitive comparison.
+inline std::string ToLower(std::string s) {
+    for (char& ch : s) {
+        ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+    }
+    return s;
+}
+
+/// Structure representing a contact in the agenda.
+struct Contact {
+    int id = 0;
+    std::string name;
+    std::string email;
+    std::string phone;
+    std::string category;
+};
+
+inline nlohmann::json ContactToJson(const Contact& c) {
+    return {
+        {"id", c.id},
+        {"name", c.name},
+        {"email", c.email},
+        {"phone", c.phone},
+        {"category", c.category}
+    };
+}
+
+/// Validates that name has between 1 and L (50) characters.
+inline bool IsValidName(const std::string& name) {
+    return !name.empty() && name.size() <= kMaxNameLength;
+}
+
+/// Validates that email has exactly one '@', with text before it and at least one '.' after it.
+inline bool IsValidEmail(const std::string& email) {
+    const size_t at_pos = email.find('@');
+    if (at_pos == std::string::npos || at_pos == 0) {
+        return false;
+    }
+    // Exactly one '@'
+    if (email.find('@', at_pos + 1) != std::string::npos) {
+        return false;
+    }
+    // At least one '.' after '@'
+    const size_t dot_pos = email.find('.', at_pos + 1);
+    if (dot_pos == std::string::npos) {
+        return false;
+    }
+    return true;
+}
+
+/// Validates that phone has exactly 10 digits, optionally preceded by '+'.
+inline bool IsValidPhone(const std::string& phone) {
+    size_t start = 0;
+    if (!phone.empty() && phone[0] == '+') {
+        start = 1;
+    }
+    if (phone.size() - start != 10) {
+        return false;
+    }
+    for (size_t i = start; i < phone.size(); ++i) {
+        if (!std::isdigit(static_cast<unsigned char>(phone[i]))) {
+            return false;
+        }
+    }
+    return true;
+}
+
+/// Validates that category is one of: family, friends, work, other.
+inline bool IsValidCategory(const std::string& category) {
+    return category == "family" || category == "friends" ||
+           category == "work" || category == "other";
+}
+
 /// Holds the application data in memory.
-/// Everything is lost when the container restarts. Add your theme's structures here.
+/// Everything is lost when the container restarts.
 class Store {
 public:
     void Reset() {
         std::lock_guard<std::mutex> guard(mutex_);
         next_id_ = 1;
+        contacts_.clear();
     }
 
     int NextId() {
@@ -39,10 +120,42 @@ public:
         return next_id_++;
     }
 
+    /// Checks if a contact with the same email already exists (case-insensitive).
+    bool HasEmail(const std::string& email) {
+        std::lock_guard<std::mutex> guard(mutex_);
+        const std::string target = ToLower(email);
+        for (const auto& [id, contact] : contacts_) {
+            if (ToLower(contact.email) == target) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /// Adds a contact and returns the stored entity with its assigned ID.
+    Contact AddContact(std::string name, std::string email, std::string phone, std::string category) {
+        std::lock_guard<std::mutex> guard(mutex_);
+        const int id = next_id_++;
+        Contact contact{id, std::move(name), std::move(email), std::move(phone), std::move(category)};
+        contacts_[id] = contact;
+        return contact;
+    }
+
+    /// Returns a copy of all contacts.
+    std::vector<Contact> GetAllContacts() {
+        std::lock_guard<std::mutex> guard(mutex_);
+        std::vector<Contact> result;
+        result.reserve(contacts_.size());
+        for (const auto& [id, contact] : contacts_) {
+            result.push_back(contact);
+        }
+        return result;
+    }
+
 private:
     std::mutex mutex_;
     int next_id_ = 1;
-    // example: std::map<int, Contact> contacts_;
+    std::map<int, Contact> contacts_;
 };
 
 /// Seconds since the process started.
@@ -73,8 +186,8 @@ inline std::string HomePage() {
 <html lang="ro"><head><meta charset="utf-8"><title>)") + kAppName + R"(</title></head>
 <body>
 <h1>)" + kAppName + R"(</h1>
-<p>Autor: NUME PRENUME, grupa GRUPA</p>
-<p>Tema: NUMARUL TEMEI</p>
+<p>Autor: Patrascu Ovidiu-Andrei, grupa 2.1</p>
+<p>Tema: 1 - Agenda de contacte</p>
 <p>Versiune: )" + kAppVersion + ", commit " + Env("APP_COMMIT", "dev") + R"(</p>
 </body></html>)";
 }

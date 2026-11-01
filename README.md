@@ -49,8 +49,9 @@ cmake --build build -j
 | `/version` | GET | Versiunea si commit-ul din care a fost construita imaginea |
 | `/` | GET | Pagina de prezentare |
 | `/reset` | POST | Goleste datele din memorie |
-| [ruta temei] | [metoda] | [descriere] |
+| `/contacts` | POST | Adauga un contact in agenda (valideaza datele si unicitatea emailului) |
 
 ## Decizii de implementare
 
-[Doua-trei decizii tehnice pe care le-ati luat si motivul fiecareia.]
+- Validarile campurilor (lungime nume, format email si telefon, categorii permise) sunt izolate in `app.hpp` pentru a permite testarea unitara fara pornirea serverului HTTP.
+- Verificarea unicitatii adresei de email se face case-insensitive (fara diferenta intre majuscule si minuscule), pastrand totusi forma originala a textului la salvare si citire.

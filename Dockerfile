@@ -13,7 +13,7 @@ RUN cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build -j
 FROM debian:bookworm-slim
 LABEL org.opencontainers.image.title="MAP proiect" \
       org.opencontainers.image.authors="Patrascu Ovidiu-Andrei <ovidiu-andrei.patrascu@student.upt.ro>"  \
-      org.opencontainers.image.source="https://github.com/ovidiundreipatrascu/proiect_map"
+      org.opencontainers.image.source="https://github.com/ovidiuandreipatrascu/proiect_map"
 
 ARG COMMIT=dev
 ARG BUILT_AT=unknown

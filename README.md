@@ -1,3 +1,4 @@
+![CI](https://github.com/ovidiuandreipatrascu/proiect_map/actions/workflows/ci.yml/badge.svg)
 # Proiect MAP
 
 Proiect individual la disciplina Metode avansate de programare, anul universitar 2026-2027.
@@ -33,7 +34,8 @@ curl http://localhost:8080/version
 
 ## Testare
 
-```Aplicatia ruleaza ca microserviciu containerizat si expune endpoint-uri REST pentru interactiunea cu clientii.
+```
+Aplicatia ruleaza ca microserviciu containerizat si expune endpoint-uri REST pentru interactiunea cu clientii.
 cmake -B build -DBUILD_TESTS=ON
 cmake --build build -j
 ./build/tests

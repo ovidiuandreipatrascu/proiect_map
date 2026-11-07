@@ -115,3 +115,51 @@ TEST_CASE("store adds contact and detects case-insensitive email conflicts") {
     CHECK_FALSE(store.HasEmail("ana@example.com"));
     CHECK(store.GetAllContacts().empty());
 }
+
+TEST_CASE("store retrieves contact by id or reports not found") {
+    Store store;
+    store.AddContact("Dan Ilie", "dan@example.com", "0711223344", "family");
+
+    const auto found = store.GetContact(1);
+    CHECK(found.has_value());
+    CHECK(found->name == "Dan Ilie");
+
+    const auto missing = store.GetContact(999);
+    CHECK_FALSE(missing.has_value());
+}
+
+TEST_CASE("store lists contacts ordered by name ascending and tie breaker by id") {
+    Store store;
+    store.AddContact("Zoe Radu", "zoe@example.com", "0733112233", "friends");
+    store.AddContact("Ana Pop", "ana1@example.com", "0722334455", "work");
+    store.AddContact("Ana Pop", "ana2@example.com", "0722334456", "family");
+
+    const auto list = store.GetContacts();
+    REQUIRE(list.size() == 3);
+    CHECK(list[0].name == "Ana Pop");
+    CHECK(list[0].id == 2);
+    CHECK(list[1].name == "Ana Pop");
+    CHECK(list[1].id == 3);
+    CHECK(list[2].name == "Zoe Radu");
+}
+
+TEST_CASE("store filters contacts by category and query substring case-insensitively") {
+    Store store;
+    store.AddContact("Ana Pop", "ana@example.com", "0722334455", "work");
+    store.AddContact("Bogdan Pop", "bogdan@example.com", "0744112233", "work");
+    store.AddContact("Ana Ionescu", "ana.i@example.com", "0755112233", "friends");
+
+    // Filter by category only
+    const auto work_contacts = store.GetContacts("work", std::nullopt);
+    CHECK(work_contacts.size() == 2);
+
+    // Search query only (case-insensitive substring "ana")
+    const auto ana_contacts = store.GetContacts(std::nullopt, "ana");
+    CHECK(ana_contacts.size() == 2); // "Ana Pop" and "Ana Ionescu"
+
+    // Combined category AND query
+    const auto combined = store.GetContacts("work", "ana");
+    REQUIRE(combined.size() == 1);
+    CHECK(combined[0].name == "Ana Pop");
+    CHECK(combined[0].category == "work");
+}

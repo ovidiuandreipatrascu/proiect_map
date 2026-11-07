@@ -54,6 +54,14 @@ inline nlohmann::json ContactToJson(const Contact& c) {
     };
 }
 
+inline nlohmann::json ContactsToJson(const std::vector<Contact>& contacts) {
+    nlohmann::json array = nlohmann::json::array();
+    for (const auto& c : contacts) {
+        array.push_back(ContactToJson(c));
+    }
+    return array;
+}
+
 /// Validates that name has between 1 and L (50) characters.
 inline bool IsValidName(const std::string& name) {
     return !name.empty() && name.size() <= kMaxNameLength;
@@ -141,15 +149,46 @@ public:
         return contact;
     }
 
-    /// Returns a copy of all contacts.
-    std::vector<Contact> GetAllContacts() {
+    /// Returns a contact by ID if it exists.
+    std::optional<Contact> GetContact(int id) {
+        std::lock_guard<std::mutex> guard(mutex_);
+        auto it = contacts_.find(id);
+        if (it != contacts_.end()) {
+            return it->second;
+        }
+        return std::nullopt;
+    }
+
+    /// Returns contacts matching optional category and query, sorted by name ascending (and id ascending as tie-breaker).
+    std::vector<Contact> GetContacts(const std::optional<std::string>& category = std::nullopt,
+                                     const std::optional<std::string>& q = std::nullopt) {
         std::lock_guard<std::mutex> guard(mutex_);
         std::vector<Contact> result;
-        result.reserve(contacts_.size());
+        const std::string lower_q = q ? ToLower(*q) : "";
+
         for (const auto& [id, contact] : contacts_) {
+            if (category && contact.category != *category) {
+                continue;
+            }
+            if (q && ToLower(contact.name).find(lower_q) == std::string::npos) {
+                continue;
+            }
             result.push_back(contact);
         }
+
+        std::sort(result.begin(), result.end(), [](const Contact& a, const Contact& b) {
+            if (a.name != b.name) {
+                return a.name < b.name;
+            }
+            return a.id < b.id;
+        });
+
         return result;
+    }
+
+    /// Returns a copy of all contacts.
+    std::vector<Contact> GetAllContacts() {
+        return GetContacts();
     }
 
 private:

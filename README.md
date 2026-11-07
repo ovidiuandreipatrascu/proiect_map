@@ -50,8 +50,11 @@ cmake --build build -j
 | `/` | GET | Pagina de prezentare |
 | `/reset` | POST | Goleste datele din memorie |
 | `/contacts` | POST | Adauga un contact in agenda (valideaza datele si unicitatea emailului) |
+| `/contacts` | GET | Listeaza contactele ordonate dupa nume (suporta filtrele category si q) |
+| `/contacts/{id}` | GET | Detaliile unui contact sau 404 not found |
 
 ## Decizii de implementare
 
 - Validarile campurilor (lungime nume, format email si telefon, categorii permise) sunt izolate in `app.hpp` pentru a permite testarea unitara fara pornirea serverului HTTP.
 - Verificarea unicitatii adresei de email se face case-insensitive (fara diferenta intre majuscule si minuscule), pastrand totusi forma originala a textului la salvare si citire.
+- Cautarea (parametrul q) in lista de contacte functioneaza case-insensitive pe subsiruri din nume, iar ordonarea implicita este alfabetica dupa nume, cu departajare crescatoare dupa id.

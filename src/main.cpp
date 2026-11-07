@@ -3,6 +3,8 @@
 
 #include <chrono>
 #include <iostream>
+#include <optional>
+#include <string>
 
 #include <httplib.h>
 #include <nlohmann/json.hpp>
@@ -78,6 +80,42 @@ int main() {
         const auto contact = store.AddContact(name, email, phone, category);
         response.status = 201;
         response.set_content(ContactToJson(contact).dump(), "application/json; charset=utf-8");
+    });
+
+    // Theme 1: Contact Agenda - GET /contacts
+    server.Get("/contacts", [&](const httplib::Request& request, httplib::Response& response) {
+        std::optional<std::string> category = std::nullopt;
+        if (request.has_param("category")) {
+            category = request.get_param_value("category");
+        }
+        std::optional<std::string> q = std::nullopt;
+        if (request.has_param("q")) {
+            q = request.get_param_value("q");
+        }
+
+        const auto contacts = store.GetContacts(category, q);
+        response.status = 200;
+        response.set_content(ContactsToJson(contacts).dump(), "application/json; charset=utf-8");
+    });
+
+    // Theme 1: Contact Agenda - GET /contacts/{id}
+    server.Get(R"(/contacts/(\d+))", [&](const httplib::Request& request, httplib::Response& response) {
+        try {
+            const int id = std::stoi(request.matches[1]);
+            const auto contact = store.GetContact(id);
+            if (!contact) {
+                response.status = 404;
+                response.set_content(ErrorBody("not_found", "contact not found").dump(),
+                                     "application/json; charset=utf-8");
+                return;
+            }
+            response.status = 200;
+            response.set_content(ContactToJson(*contact).dump(), "application/json; charset=utf-8");
+        } catch (...) {
+            response.status = 404;
+            response.set_content(ErrorBody("not_found", "contact not found").dump(),
+                                 "application/json; charset=utf-8");
+        }
     });
 
     server.set_error_handler([](const httplib::Request&, httplib::Response& response) {
